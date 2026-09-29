@@ -1,0 +1,42 @@
+{
+  "instance_id": "Lightning-AI__pytorch-lightning-4654@89b962d",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 2,
+      "num_inline": 1,
+      "findings": [
+        {
+          "file": "pytorch_lightning/trainer/connectors/callback_connector.py",
+          "line": 77,
+          "start_line": null,
+          "end_line": null,
+          "description": "This check runs before the progress bar is resolved, so it also fires when the user turns the bar off with `progress_bar_refresh_rate=0`, the documented way to disable it ([`trainer.py:224`](https://github.com/pullfrog-test-four/ccrab__Lightning-AI__pytorch-lightning-4654/blob/9b47fe163249ce10c2b8db8cf543fbaa4d97d653/pytorch_lightning/trainer/trainer.py#L224)). It also fires when a custom `ProgressBarBase` is in `callbacks`, where `refresh_rate` is never used. In both cases no tqdm bar is created at this refresh rate, so the warning is wrong.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Colab warning fires when no default ProgressBar is created\n\n## Affected sites\n- pytorch_lightning/trainer/connectors/callback_connector.py:77 — `IS_COLAB and refresh_rate < 20` is checked before the `progress_bars` / `refresh_rate > 0` branches\n\n## Required outcome\n- Warn only when a default `ProgressBar(refresh_rate=refresh_rate)` is actually created with `0 < refresh_rate < 20` on Colab.\n\n## Suggested approach (optional)\n- Move the check into the `elif refresh_rate > 0:` branch (around line 92), just before `ProgressBar(...)` is created.\n````\n\n</details>"
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> [!IMPORTANT]\n> The new Colab warning fires in cases where it doesn't apply: when the progress bar is turned off and when the user supplies their own progress bar. The PR also only warns, while its title and description say it will switch Colab to a refresh rate of 20 automatically.\n\n**Reviewed changes**\n\nReviewed the single commit, which adds Google Colab detection and a warning about slow progress bar refresh rates.\n\n- **`IS_COLAB` flag** — `pytorch_lightning/utilities/__init__.py` now sets `IS_COLAB = 'google.colab' in sys.modules` when the module is imported.\n- **Colab refresh-rate warning** — `CallbackConnector.configure_progress_bar` now warns when running on Colab with `refresh_rate < 20`.\n- **CHANGELOG** — adds an \"Added\" entry for #4654 that describes the warning.\n- **Import ordering** — both Python files have their imports re-sorted. This changes nothing at runtime.\n\n\n\n### ⚠️ The PR warns instead of changing the rate, so every default `Trainer()` on Colab gets a warning\n\nThe title and description say that on Colab, Lightning should set `progress_bar_refresh_rate=20` automatically when the user keeps the default. The code only warns. Because the `Trainer` default is still `1` ([`trainer.py:103`](https://github.com/pullfrog-test-four/ccrab__Lightning-AI__pytorch-lightning-4654/blob/9b47fe163249ce10c2b8db8cf543fbaa4d97d653/pytorch_lightning/trainer/trainer.py#L103)), every plain `pl.Trainer()` on Colab now prints a warning and can still crash. That is the opposite of the stated goal of letting beginner examples just call `pl.Trainer()`.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Colab default is warned about, not overridden\n\n## Affected sites\n- pytorch_lightning/trainer/trainer.py:103 — `progress_bar_refresh_rate: int = 1` default unchanged\n- pytorch_lightning/trainer/connectors/callback_connector.py:77 — only warns\n- CHANGELOG.md:35 — describes a warning, not an override\n\n## Required outcome\n- A default `Trainer()` on Colab uses a refresh rate of 20 without a warning, and a value the user sets explicitly is still respected.\n\n## Suggested approach (optional)\n- Change the `Trainer` default to `progress_bar_refresh_rate: Optional[int] = None` and resolve it in `configure_progress_bar`: `20 if IS_COLAB else 1` when it is `None`. Update the `trainer.py` docstring and `docs/source/trainer.rst` to match.\n- Keep the warning, if at all, only for users who explicitly pass `0 < refresh_rate < 20` on Colab.\n\n## Open questions for the human (optional)\n- Is a warning alone intended for this PR, with the automatic override coming later? If so, the PR title and description should say that.\n````\n\n</details>\n\n### ℹ️ No test covers the new behaviour\n\nNo test was added for the Colab path. A test that sets `pytorch_lightning.trainer.connectors.callback_connector.IS_COLAB` to `True` with `monkeypatch` and asserts on the exact warning (or on the resolved `trainer.progress_bar_callback.refresh_rate`) would catch the cases above.\n\n### ℹ️ Nitpicks\n\n- `CHANGELOG.md:36` adds a second blank line, so there are now two blank lines before `### Changed`. The rest of the file uses one.\n- The message mixes `< 20` and `>=20`. Put spaces around both operators and wrap the flag in backticks to match other warnings."
+        }
+      ],
+      "elapsed_seconds": 144.673,
+      "run_seconds": 169.385,
+      "cost_usd": 0.4161596,
+      "input_tokens": 433776,
+      "output_tokens": 6723,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36643614360",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__Lightning-AI__pytorch-lightning-4654/pull/1"
+    }
+  }
+}

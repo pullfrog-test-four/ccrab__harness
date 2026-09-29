@@ -1,0 +1,56 @@
+{
+  "instance_id": "All-Hands-AI__OpenHands-8343@9d4e2af",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 4,
+      "num_inline": 3,
+      "findings": [
+        {
+          "file": "openhands/core/logger.py",
+          "line": 21,
+          "start_line": null,
+          "end_line": null,
+          "description": "This changes behavior; no formatter produced it. With `LOG_JSON=true`, every JSON log line now uses the key `severity` instead of `level`. Any log pipeline, alert, or dashboard that filters on `level` stops matching unless it sets `LOG_JSON_LEVEL_KEY`. If this is intentional (for example, GCP Cloud Logging reads `severity`), it belongs in its own PR with a changelog note. Otherwise, revert it here along with the `tests/unit/test_logging.py` changes.\n\n```suggestion\nLOG_JSON_LEVEL_KEY = os.getenv('LOG_JSON_LEVEL_KEY', 'level')\n```"
+        },
+        {
+          "file": "openhands/llm/llm.py",
+          "line": 665,
+          "start_line": null,
+          "end_line": null,
+          "description": "Ruff merged an existing implicit-concatenation bug into a single literal, so the bug is now plain to see. The original `'127.0.0.1' '0.0.0.0'` was missing a comma. As a result, `_is_local()` has never matched a `base_url` like `http://127.0.0.1:11434` or `http://0.0.0.0:8000`. This PR already edits the line, so it's a good time to fix it.\n\n```suggestion\n            for substring in ['localhost', '127.0.0.1', '0.0.0.0']:\n```"
+        },
+        {
+          "file": "tests/unit/test_cli.py",
+          "line": 609,
+          "start_line": 607,
+          "end_line": 609,
+          "description": "This replaces the assertion with an assignment, so the test no longer checks that command-line `agent_cls` wins over `settings.agent`. It would still pass if `main()` overwrote `default_agent` with `'settings-agent'`. To simulate `setup_config_from_args`, set `mock_config.default_agent = 'cmd-line-agent'` *before* `await cli.main(loop)` (next to the other `mock_config` setup). Then keep `assert mock_config.default_agent == 'cmd-line-agent'` here.\n\n```suggestion\n    assert mock_config.default_agent == 'cmd-line-agent'\n```"
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> [!IMPORTANT]\n> Most of this PR is mechanical formatter output, but the formatting pass also carries a few hand edits. One of them changes the default JSON log schema (`level` → `severity`), which is unrelated to the hook upgrade.\n\n**Reviewed changes**\n\nReviewed the full diff: the hook version bumps plus the repo-wide `pre-commit run --all-files` output.\n\n- **Hook bumps** — pre-commit-hooks `v5.0.0`, pyproject-fmt `v2.5.1`, validate-pyproject `v0.24.1`, ruff `v0.11.8`, mypy `v1.15.0`. The ruff and mypy pins now match the dev dependencies already in `pyproject.toml`.\n- **Ruff ASYNC ignores** — `ASYNC110/220/221/230/251` are added to `dev_config/python/ruff.toml` as a temporary suppression.\n- **Docs (178 files)** — only trailing-whitespace and EOF-newline changes.\n- **Python reformatting** — ruff 0.9+ style: f-string quote flips, the new `assert cond, (msg)` layout, parenthesized `with`, merged implicit string concatenation, `typing.List`/`Dict`/`Tuple` → builtins, and `type(x) ==` → `isinstance`. I checked the `isinstance` rewrites in `security/invariant/parser.py`: none of the affected classes have subclasses, so behavior is unchanged.\n- **`pyproject.toml`** — reorganized by pyproject-fmt 2.x. `[tool.ruff.lint]` is now dotted `lint.*` keys under `[tool.ruff]`, which means the same thing. No dependency versions changed.\n- **Hand edits** — the `LOG_JSON_LEVEL_KEY` default in `openhands/core/logger.py` changed, a `None` guard was added for `settings.agent` in `openhands/cli/main.py`, and assertions changed in `tests/unit/test_cli.py` and `tests/unit/test_logging.py`.\n\n\n\n### ℹ️ Temporary ASYNC ignores have no tracking follow-up\n\n`dev_config/python/ruff.toml` turns off five `ASYNC` rules \"until they can be properly fixed in a separate PR\". Nothing in the PR links that follow-up. Without a tracking issue, these ignores tend to become permanent. Consider opening an issue and linking it in the comment."
+        }
+      ],
+      "elapsed_seconds": 273.724,
+      "run_seconds": 302.107,
+      "cost_usd": 1.1943844,
+      "input_tokens": 2010764,
+      "output_tokens": 16322,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36643541946",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__All-Hands-AI__OpenHands-8343/pull/1"
+    }
+  }
+}
