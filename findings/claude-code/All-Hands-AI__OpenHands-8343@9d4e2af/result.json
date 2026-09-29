@@ -1,0 +1,34 @@
+{
+  "instance_id": "All-Hands-AI__OpenHands-8343@9d4e2af",
+  "tools": {
+    "claude-code": {
+      "success": true,
+      "num_findings": 3,
+      "findings": [
+        {
+          "file": "openhands/core/logger.py",
+          "line": 21,
+          "type": "bug",
+          "description": "The default for LOG_JSON_LEVEL_KEY changed from 'level' to 'severity'. This changes behaviour and has nothing to do with upgrading pre-commit hooks or running linters. Anything that reads JSON logs and expects a 'level' field (dashboards, alerts, parsers) will quietly break unless LOG_JSON_LEVEL_KEY is set. The tests in tests/unit/test_logging.py were edited to expect 'severity', which hides the change. Revert it, or move it to a separate, documented PR."
+        },
+        {
+          "file": "tests/unit/test_cli.py",
+          "line": 609,
+          "type": "bug",
+          "description": "The assertion `assert mock_config.default_agent == 'cmd-line-agent'` was replaced with the assignment `mock_config.default_agent = 'cmd-line-agent'`. The test now sets the value it used to check, so it no longer verifies that command-line arguments override the stored settings for the agent. Keep a real assertion instead, for example check that setup_config_from_args received agent_cls, or that main() did not overwrite default_agent with settings.agent."
+        },
+        {
+          "file": "dev_config/python/ruff.toml",
+          "line": 23,
+          "type": "suggestion",
+          "description": "Five ASYNC rules (ASYNC110, ASYNC220, ASYNC221, ASYNC230, ASYNC251) are ignored globally so the newer ruff passes. These rules catch real problems such as blocking file or subprocess calls and time.sleep inside async code. Ignoring them for the whole project with only a 'temporarily' comment makes it easy to forget them. Track the follow-up in an issue, or use per-file ignores or targeted noqa comments instead."
+        }
+      ],
+      "raw_output_file": "claude-code.txt",
+      "elapsed_seconds": 59.4,
+      "error": null,
+      "cost_usd": 0.30952840000000004,
+      "num_turns": 9
+    }
+  }
+}

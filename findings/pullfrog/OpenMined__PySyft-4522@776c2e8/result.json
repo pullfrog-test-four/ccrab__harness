@@ -1,0 +1,70 @@
+{
+  "instance_id": "OpenMined__PySyft-4522@776c2e8",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 6,
+      "num_inline": 5,
+      "findings": [
+        {
+          "file": "syft/frameworks/torch/mpc/falcon/falcon_helper.py",
+          "line": 103,
+          "start_line": 102,
+          "end_line": 103,
+          "description": "These debug `print`s were left in and will run on every `select_share` call.\n\n```suggestion\n\n```"
+        },
+        {
+          "file": "test/torch/tensors/test_native.py",
+          "line": 257,
+          "start_line": 255,
+          "end_line": 257,
+          "description": "This \"native\" case calls `secret.reconstruct()` on the AST again, so the plain-tensor path is never tested. If it were changed to `plain_text.reconstruct()`, it would fail: `TorchTensor.reconstruct` reads `self.child` unguarded, which raises `AttributeError` rather than `ValueError` (see the comment on `native.py`).\n\n```suggestion\n    # exception test for native\n    with pytest.raises(ValueError):\n        decryption = plain_text.reconstruct()\n```"
+        },
+        {
+          "file": "syft/frameworks/torch/tensors/interpreters/native.py",
+          "line": 1218,
+          "start_line": null,
+          "end_line": null,
+          "description": "On a plain tensor with no child, `self.child` raises `AttributeError` before the `isinstance` check runs, so the intended `ValueError` never happens. The `players`/`ring_size` properties above guard with `hasattr` for this reason.\n\n```suggestion\n        if not (self.has_child() and isinstance(self.child, (ReplicatedSharingTensor, FixedPrecisionTensor))):\n```"
+        },
+        {
+          "file": "syft/frameworks/torch/tensors/interpreters/replicated_shared.py",
+          "line": 73,
+          "start_line": null,
+          "end_line": null,
+          "description": "`share(protocol=\"falcon\")` now returns a wrapper, but `RST.__switch_public_private` still sends any `torch.Tensor` (wrappers included) down the **public** path, which runs `torch.tensor(value, dtype=torch.long)` on it. So bare-RST ⊕ wrapped-RST gives silently wrong results. For example, `FalconHelper.select_share(b.child, x.child, y.child)`: `d` is now a wrapper (built from `c_L`), and `(y - x) * d` treats it as plaintext.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Wrapped RST treated as plaintext by bare RST ops\n\n## Affected sites\n- syft/frameworks/torch/tensors/interpreters/replicated_shared.py `__switch_public_private` — `isinstance(value, torch.Tensor)` matches a wrapper around an RST before the `ReplicatedSharingTensor` check.\n- syft/frameworks/torch/mpc/falcon/falcon_helper.py `select_share` — `c_2`/`c_L` are now always wrappers, so with bare-RST `x`/`y` the expression `(y - x) * d + x` mixes the two forms.\n\n## Required outcome\n- A bare RST combined with a wrapped RST either unwraps the wrapper and takes the private path, or raises. It must never treat the shares as a public value.\n\n## Suggested approach\n- In `__switch_public_private`, unwrap `value` first when `torch.is_tensor(value) and value.is_wrapper` (the same way `FalconHelper.xor` does), or check for a wrapped RST before the `torch.Tensor` check.\n````\n\n</details>"
+        },
+        {
+          "file": "syft/frameworks/torch/tensors/interpreters/precision.py",
+          "line": 546,
+          "start_line": 542,
+          "end_line": 546,
+          "description": "`FixedPrecisionTensor.reconstruct` overwrites `self.child` in place, so after one call the caller's shared tensor no longer holds its RST shares. It also isn't used by `TorchTensor.reconstruct`, which goes through `self.child.get()` → `AbstractTensor.get` and returns a new tensor. Make this return a new tensor too, for example by delegating to `self.get()`.\n\n```suggestion\n    def reconstruct(self):\n        if not isinstance(self.child, ReplicatedSharingTensor):\n            raise ValueError(\"reconstruct can only be called on RST\")\n        return self.get()\n```"
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> [!IMPORTANT]\n> Leftover debug `print`s in `select_share`, a broken `reconstruct` test, and FPT×FPT multiplication over RST not working (even though the PR description asks for it) should be fixed before merge.\n\n**Reviewed changes**\n\nI reviewed the initial commit, which lets `FixedPrecisionTensor` sit on top of `ReplicatedSharingTensor` in the falcon protocol.\n\n- **`share(protocol=\"falcon\")` now returns a wrapper** — the falcon branch moved into the no-child path of `TorchTensor.share`, so the result is wrapped like the AST path. `FixedPrecisionTensor.share` also passes `field` down now.\n- **RST registered with `hook_args`** — this lets `FixedPrecisionTensor`'s overloaded methods unwrap to RST. `RST.get` is aliased to `reconstruct`.\n- **New accessors** — `TorchTensor.players`, `TorchTensor.ring_size`, `TorchTensor.reconstruct()`, `FixedPrecisionTensor.ring_size` and `FixedPrecisionTensor.reconstruct()`.\n- **FPT add/sub with RST** — operands are swapped when a `FPT>torch.tensor` meets a `FPT>RST`.\n- **Falcon helpers are now wrapper-aware** — `FalconHelper.xor` and `conv2d` unwrap their inputs and wrap the result again.\n- **Tooling** — black in `.pre-commit-config.yaml` goes from `19.10b0` to `20.8b1`. This has nothing to do with the feature, and black 20.8b1's magic-trailing-comma rule may reformat files outside this PR.\n\n\n\n### ⚠️ Multiplying two fixed-precision tensors over RST is not supported\n\nThe PR description asks for tests of addition, multiplication and matrix multiplication, but only add and sub are covered. Multiplying by an integer works. Multiplying two fixed-precision tensors (`x * y` or `x.matmul(y)`, where `x` is `FPT>RST` and `y` is an FPT) fails: in `FixedPrecisionTensor.mul_and_div` it lands in the generic `else` branch, which calls `new_self > 0` on an RST, and RST has no comparison operators.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# FPT>RST mul/matmul unsupported\n\n## Affected sites\n- syft/frameworks/torch/tensors/interpreters/precision.py `mul_and_div` — the branches check only for `AdditiveSharingTensor`/`MultiPointerTensor`. `FPT>RST * FPT>tensor` and `FPT>RST * FPT>RST` fall through to the `else` branch, which runs `(new_self > 0)` for sign handling. `ReplicatedSharingTensor` has no `__gt__`.\n- `matmul` has no FPT-specific path that handles RST either.\n- test/torch/tensors/test_replicated_shared.py — no mul/matmul tests for the fixed-precision chain.\n\n## Required outcome\n- `(t.fix_prec().share(..., protocol=\"falcon\") * u.fix_prec()).reconstruct().float_prec()` is close to `t * u`, including negative values and correct truncation. Same for the private×private case and for `matmul`.\n- Tests covering these cases, as the PR description asks.\n\n## Open questions for the human\n- Is FPT×FPT mul out of scope for this PR? If so, the description should say that it will follow separately.\n````\n\n</details>"
+        }
+      ],
+      "elapsed_seconds": 384.598,
+      "run_seconds": 412.889,
+      "cost_usd": 0.9208404,
+      "input_tokens": 1129704,
+      "output_tokens": 15719,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36643781199",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__OpenMined__PySyft-4522/pull/1"
+    }
+  }
+}

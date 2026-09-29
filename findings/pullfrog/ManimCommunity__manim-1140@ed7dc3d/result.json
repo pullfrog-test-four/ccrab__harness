@@ -1,0 +1,77 @@
+{
+  "instance_id": "ManimCommunity__manim-1140@ed7dc3d",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 7,
+      "num_inline": 6,
+      "findings": [
+        {
+          "file": ".flake8",
+          "line": 8,
+          "start_line": null,
+          "end_line": null,
+          "description": "`D102` appears twice on this line, and `D104` appears here and again on the next line. Several lines also end with trailing whitespace, and the file has no newline at EOF. Worth tidying, since this list is meant to be shortened over time."
+        },
+        {
+          "file": "manim/mobject/mobject.py",
+          "line": 383,
+          "start_line": 381,
+          "end_line": 383,
+          "description": "`A003` is already in `extend-ignore`, so this doesn't actually trigger a flake8 error. The comment also has typos (\"depricated\", \"standerd\", \"cuases\"), and it pushed black into splitting the signature. I'd restore the original line and track the rename in an issue.\n\n```suggestion\n    def set(self, **kwargs) -> \"Mobject\":\n```"
+        },
+        {
+          "file": "manim/grpc/impl/frame_server_impl.py",
+          "line": 246,
+          "start_line": null,
+          "end_line": null,
+          "description": "With `stub` gone, this `with grpc.insecure_channel(...)` opens a channel that nothing uses. `update_renderer_scene_data()` opens its own channel. Drop the context manager and dedent the `try`/`except`, rather than keeping a no-op block."
+        },
+        {
+          "file": "manim/renderer/opengl_renderer.py",
+          "line": 261,
+          "start_line": null,
+          "end_line": null,
+          "description": "Delete dead code instead of commenting it out with `Unused?`. `shader_program` really is unused here, since the next line reads `render_group[\"prog\"]` directly. The same applies to the `# fw = ...` line in `pixel_coords_to_space_coords`."
+        },
+        {
+          "file": "manim/renderer/opengl_renderer.py",
+          "line": 431,
+          "start_line": 430,
+          "end_line": 431,
+          "description": "```suggestion\n        fh = config[\"frame_height\"]\n```"
+        },
+        {
+          "file": "manim/utils/iterables.py",
+          "line": 52,
+          "start_line": null,
+          "end_line": null,
+          "description": "`i` usually means an index, and the docstring right below still refers to `l`. A name like `lst` or `seq` avoids `E741` and stays readable."
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> ℹ️ No critical issues. A few rough edges are noted inline, and `flake8` still fails when run from the repo root.\n\n**Reviewed changes**\n\nI reviewed the whole PR: it adds a `flake8` config and plugins, plus a mechanical cleanup pass over `manim/` to satisfy them.\n\n- **`flake8` tooling:** adds a new `.flake8` with a large `extend-ignore` list, and 8 `flake8` plugins added as dev dependencies in `pyproject.toml` and `poetry.lock`.\n- **Mechanical cleanups:** `dict()` → `{}`, `dict([...])` → comprehensions, unused loop vars → `_`, unused `except ... as e` bindings dropped, raw strings for the regexes in `text_mobject.py`, `== None` → `is None`.\n- **Dead or duplicate code removed:** the duplicate `insert_n_curves_to_point_list` def in `vectorized_mobject.py`, the duplicate `\"axis_config\"` key in `vector_space_scene.py`, and the nonexistent `\"update\"` entry in `plugins_flags.__all__`. I checked that behavior stays the same in all three.\n- **Parameter renames:** `DictAsObject(dictin)` and `remove_list_redundancies(i)`. No callers pass these by keyword.\n\nI ran the pinned versions (`flake8==3.9.0` plus the plugins) on Python 3.8. `flake8 manim` is clean. The only output was `RST299`, and that comes from my test venv not having Pygments installed.\n\n\n\n### ℹ️ `flake8` from the repo root still reports 54 violations, and nothing runs it\n\n`.flake8` has no `exclude` and doesn't limit which paths get checked, so a bare `flake8` (the default for editors and a typical pre-commit hook) also lints `tests/` (44), `docs/` (5), `scripts/` (3) and `example_scenes/` (2). The PR description mentions pre-commit, but the PR doesn't add a pre-commit hook or a CI step. As it stands, nothing stops new violations. Separately, `flake8==3.9.0` crashes on Python 3.12 (`AttributeError: 'EntryPoints' object has no attribute 'get'`), and `flake8-logging-format` needs `setuptools`/`pkg_resources` to be installed, which the lock file doesn't include.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Root-level flake8 run fails; linter not enforced\n\n## Affected sites\n- `.flake8` — no `exclude` / path scoping; `flake8 .` reports 54 violations outside `manim/`, mostly `PT023`, `PT001`, `F841`, `PT011`, `F811`, `B011`, `PT015` in `tests/`.\n- No `.pre-commit-config.yaml` or CI workflow invokes flake8.\n\n## Required outcome\n- Running `flake8` at the repo root passes, or the config explicitly scopes it (e.g. to `manim`) and documents that.\n- Decide whether to enforce it now (pre-commit hook / CI job) or in a follow-up.\n\n## Open questions for the human\n- Should `tests/` be linted, with the pytest-style fixes applied or those codes ignored, or excluded for now?\n- Is it acceptable that the pinned `flake8` 3.9 only works on Python < 3.12?\n````\n\n</details>\n\n### ℹ️ Nitpicks\n\n- `manim/utils/iterables.py:172`: `concatenate_lists` also switches to `i` as the name for an inner list. `sublist` would read better."
+        }
+      ],
+      "elapsed_seconds": 252.894,
+      "run_seconds": 276.998,
+      "cost_usd": 0.8484468,
+      "input_tokens": 1131138,
+      "output_tokens": 11212,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36643654804",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__ManimCommunity__manim-1140/pull/1"
+    }
+  }
+}

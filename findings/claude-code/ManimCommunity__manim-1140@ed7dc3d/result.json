@@ -1,0 +1,70 @@
+{
+  "instance_id": "ManimCommunity__manim-1140@ed7dc3d",
+  "tools": {
+    "claude-code": {
+      "success": true,
+      "num_findings": 9,
+      "findings": [
+        {
+          "file": ".flake8",
+          "line": 4,
+          "type": "warning",
+          "description": "The ignore list is very broad. It turns off useful checks such as F401/F403/F405 (unused and star imports), F821 (undefined names, which catches real bugs), W605, E731, B008, B009, plus about 40 docstring/RST codes. As configured, the linter reports little of value, and the 'Remove later' notes are not tracked anywhere. It also lists D102 and D104 twice, has a trailing comma and indented comment lines inside the value, and has no newline at end of file."
+        },
+        {
+          "file": "pyproject.toml",
+          "line": 59,
+          "type": "info",
+          "description": "flake8 and seven plugins are added as dev dependencies, but nothing runs them: no pre-commit hook and no CI workflow step were added. The issue asked for pre-commit integration, so flake8 will not actually be enforced and the codebase will drift out of compliance again."
+        },
+        {
+          "file": "manim/mobject/mobject.py",
+          "line": 383,
+          "type": "suggestion",
+          "description": "The inline comment on the `set` signature has typos ('depricated', 'standerd libary', 'cuases'). It is also misleading: the builtins check it refers to (A003) is ignored in `.flake8` anyway. Because the comment is so long, black splits the signature onto several lines. Move it to a TODO above the method or drop it."
+        },
+        {
+          "file": "manim/renderer/opengl_renderer.py",
+          "line": 261,
+          "type": "suggestion",
+          "description": "Unused assignments are left as commented-out code with 'Unused?' notes (`shader_program`, `fw`). Delete them instead of leaving dead code and open questions in the source."
+        },
+        {
+          "file": "manim/utils/iterables.py",
+          "line": 52,
+          "type": "suggestion",
+          "description": "The ambiguous name `l` (E741) is renamed to `i`, which reads like an integer index; `concatenate_lists` does the same. The docstring still says `list(set(l))`. Use a descriptive name such as `lst` or `seq`. Renaming a public function's parameter also breaks any caller that passes it by keyword."
+        },
+        {
+          "file": "manim/utils/config_ops.py",
+          "line": 43,
+          "type": "suggestion",
+          "description": "`dictin` is an awkward name, and renaming a public constructor parameter can break keyword callers. A clearer name such as `data` or `mapping` would be better."
+        },
+        {
+          "file": "manim/mobject/svg/code_mobject.py",
+          "line": 313,
+          "type": "suggestion",
+          "description": "`*list(line_numbers_array)` (and `*list(lines_text)` at line 339) makes a pointless copy; `*line_numbers_array` unpacks the list directly."
+        },
+        {
+          "file": "manim/animation/transform.py",
+          "line": 203,
+          "type": "suggestion",
+          "description": "Several docstrings were capitalised to satisfy pydocstyle ('Method is...', 'Frame is...', 'Points must...', 'Function is...', 'Alpha is...'). Those first words are parameter names, so capitalising them hides that they refer to parameters. Reword the sentences or put the names in double backticks."
+        },
+        {
+          "file": "manim/renderer/shader_wrapper.py",
+          "line": 130,
+          "type": "suggestion",
+          "description": "`for (name, _code) in code_map.items()` iterates over items but never uses the value; `for name in code_map` is clearer."
+        }
+      ],
+      "raw_output_file": "claude-code.txt",
+      "elapsed_seconds": 52.9,
+      "error": null,
+      "cost_usd": 0.2615966,
+      "num_turns": 9
+    }
+  }
+}
