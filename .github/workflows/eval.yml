@@ -1,0 +1,69 @@
+name: eval
+run-name: eval ${{ inputs.tool }} (${{ inputs.label }})
+on:
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: findings/<tool>/<instance>/result.json to evaluate
+        required: true
+      instances:
+        description: JSON array of c-CRAB instance ids
+        required: true
+      label:
+        default: batch
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        instance: ${{ fromJSON(inputs.instances) }}
+    steps:
+      - name: Free disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          docker image prune -af > /dev/null
+          df -h /
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: c-CRAB-Benchmark/dataset
+          ref: 856dfa3102b8996d168c4f195217b7603e1d1bc6
+          path: ccrab
+      - name: Prepare
+        env:
+          INSTANCE: ${{ matrix.instance }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          pip install --quiet packaging
+          slug="${INSTANCE%@*}"
+          image="$(echo "$slug" | tr '[:upper:]' '[:lower:]')"
+          docker pull --quiet "ghcr.io/c-crab-benchmark/${image}:latest"
+          docker tag "ghcr.io/c-crab-benchmark/${image}:latest" "reviewbench/${image}"
+          unzip -q ccrab/raw_results_compressed/testgen_combined.zip "testgen_combined/${INSTANCE}/*" -d /tmp
+          printf '%s' "$ANTHROPIC_API_KEY" > /tmp/anthropic_key
+          echo "SLUG=$slug" >> "$GITHUB_ENV"
+      - name: Evaluate
+        env:
+          INSTANCE: ${{ matrix.instance }}
+        run: >
+          python eval.py --instance "$INSTANCE" --tool "${{ inputs.tool }}" --findings-dir "findings/${{ inputs.tool }}"
+          --testgen-dir /tmp/testgen_combined --key-file /tmp/anthropic_key --out out
+      - name: Seal
+        if: always()
+        env:
+          RESULTS_KEY: ${{ secrets.RESULTS_KEY }}
+        run: |
+          rm -f /tmp/anthropic_key
+          tar czf - out | openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:RESULTS_KEY -out sealed.bin
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-${{ inputs.tool }}-${{ env.SLUG }}
+          path: sealed.bin

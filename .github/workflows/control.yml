@@ -1,0 +1,60 @@
+name: control
+run-name: control ${{ inputs.model }} (${{ inputs.label }})
+on:
+  workflow_dispatch:
+    inputs:
+      instances:
+        description: JSON array of c-CRAB instance ids
+        required: true
+      model:
+        default: claude-opus-5-5
+      effort:
+        default: high
+      label:
+        default: batch
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        instance: ${{ fromJSON(inputs.instances) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: c-CRAB-Benchmark/dataset
+          ref: 856dfa3102b8996d168c4f195217b7603e1d1bc6
+          path: ccrab
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install
+        run: |
+          npm install -g @anthropic-ai/claude-code@2.1.284
+          pip install --quiet packaging pyyaml
+      - name: Clone snapshot repo
+        env:
+          INSTANCE: ${{ matrix.instance }}
+        run: |
+          slug="${INSTANCE%@*}"
+          git clone --quiet "https://github.com/${{ github.repository_owner }}/ccrab__${slug}.git" work
+          echo "SLUG=$slug" >> "$GITHUB_ENV"
+      - name: Review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          INSTANCE: ${{ matrix.instance }}
+        run: >
+          python control.py --instance "$INSTANCE" --workdir work --model "${{ inputs.model }}"
+          --effort "${{ inputs.effort }}" --timeout 1800 --out "out/$INSTANCE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: control-${{ env.SLUG }}
+          path: out
