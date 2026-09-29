@@ -1,0 +1,52 @@
+{
+  "instance_id": "conan-io__conan-16942@e62c6eb",
+  "tools": {
+    "claude-code": {
+      "success": true,
+      "num_findings": 6,
+      "findings": [
+        {
+          "file": "conans/client/rest/remote_credentials.py",
+          "line": 96,
+          "type": "bug",
+          "description": "If `auth.py` is missing, `_load_auth_plugin` raises an error on every authentication, even though the plugin is only meant to be an optional extension point. The file is only created by migration, which runs only when the Conan version changes. Some caches never get the file: a dev build with the same version, or a home copied or set up without `extensions/plugins/auth.py`. In those, `remote login` and every token refresh or re-login in `AuthManager` fail. They should fall back to credentials.json, environment variables or the prompt. Suggest treating a missing file as 'no plugin'."
+        },
+        {
+          "file": "conans/client/rest/remote_credentials.py",
+          "line": 57,
+          "type": "warning",
+          "description": "Whatever the plugin returns is used without any fallback. `AuthManager._retry_with_new_token` calls `creds.auth()` up to LOGIN_RETRIES times. If the keyring holds an outdated password, the same bad credentials are sent three times, then it fails with 'Too many failed login attempts'. The user is never prompted, and repeated bad logins could lock the account."
+        },
+        {
+          "file": "conans/client/rest/remote_credentials.py",
+          "line": 102,
+          "type": "suggestion",
+          "description": "`load_python_file(self.auth_plugin_path)` runs outside the try/except. A syntax or import error in `auth.py` therefore doesn't get the 'Error while processing auth.py plugin' message and scoped traceback that runtime errors get."
+        },
+        {
+          "file": "conan/cli/commands/remote.py",
+          "line": 199,
+          "type": "warning",
+          "description": "`remote login` calls `creds.auth(args.remote, ...)`, and `args.remote` is a pattern such as '*', not a real remote name. The plugin can therefore receive '*' and fail its keyring lookup. It also gets only a name string, not the Remote object, so it can't look up credentials by URL."
+        },
+        {
+          "file": "conan/cli/commands/remote.py",
+          "line": 201,
+          "type": "suggestion",
+          "description": "When the user from `creds.auth` doesn't match the username given on the command line, the error still says the mismatch is 'in credentials.json or environment variables'. The user can now come from the auth plugin too, so the message is misleading."
+        },
+        {
+          "file": "test/integration/configuration/test_auth_plugin.py",
+          "line": 13,
+          "type": "suggestion",
+          "description": "The test names (test_error_profile_plugin, test_profile_plugin_direct_credentials, test_profile_plugin_fallback) were copied from the profile plugin tests. They should be renamed to refer to the auth plugin."
+        }
+      ],
+      "raw_output_file": "claude-code.txt",
+      "elapsed_seconds": 43.5,
+      "error": null,
+      "cost_usd": 0.16470100000000001,
+      "num_turns": 6
+    }
+  }
+}

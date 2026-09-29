@@ -1,0 +1,46 @@
+{
+  "instance_id": "iterative__dvc-2596@37847e7",
+  "tools": {
+    "claude-code": {
+      "success": true,
+      "num_findings": 5,
+      "findings": [
+        {
+          "file": "scripts/completion/dvc.bash",
+          "line": 74,
+          "type": "warning",
+          "description": "The helper `replace_hyphen` is defined as a global shell function in the user's interactive shell, and its name has no prefix. Everything else in this file uses the `_dvc` prefix. The generic name can clash with, or overwrite, a user's own function or one from another completion script. Rename it to something like `_dvc_replace_hyphen`, or drop the helper and use bash parameter expansion (`${COMP_WORDS[1]//-/_}`)."
+        },
+        {
+          "file": "scripts/completion/dvc.bash",
+          "line": 75,
+          "type": "suggestion",
+          "description": "`echo $(echo $1 | sed 's/-/_/g')` starts two subshells plus a `sed` process on every completion. It also leaves `$1` unquoted, so the value is word-split and glob-expanded (for example, `*` expands to file names). `echo` can also treat the value as an option such as `-n` or `-e`. `${1//-/_}`, or doing the substitution inline with `${var//-/_}`, is safer and much cheaper."
+        },
+        {
+          "file": "scripts/completion/dvc.bash",
+          "line": 99,
+          "type": "warning",
+          "description": "The fix is incomplete. Only hyphens are replaced, but `COMP_WORDS[2]` is often a file argument, not a subcommand. For example, `dvc add foo.txt <TAB>` or `dvc move a/b <TAB>` builds `options_list=_dvc_add_foo.txt`. That is not a valid variable name, so `${!options_list}` fails with a `bad substitution` error printed to the terminal. Before expanding, check that the name is valid (e.g. `[[ $options_list =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]`), or check `declare -p`, or look the name up in a case/associative array. The same applies at the COMP_CWORD==2 level for arguments that contain characters other than hyphens."
+        },
+        {
+          "file": "scripts/completion/dvc.bash",
+          "line": 99,
+          "type": "suggestion",
+          "description": "At COMP_CWORD 3 the hyphen replacement is applied to `COMP_WORDS[2]` but not to `COMP_WORDS[1]`. This is inconsistent: any future hyphenated command that has subcommands would produce an invalid variable name like `_dvc_foo-bar_baz`. Apply the replacement to the whole constructed name instead."
+        },
+        {
+          "file": "scripts/completion/dvc.bash",
+          "line": 96,
+          "type": "suggestion",
+          "description": "Returning early when the previous word starts with `-` stops the `bad substitution` error, but it also removes useful completions. For example, `dvc add -R <TAB>` and `dvc checkout -f <TAB>` no longer suggest files or remaining options, and `dvc -v <TAB>` no longer suggests commands. A better approach is to fall back to the command's option list (`_dvc_${COMP_WORDS[1]}`) instead of returning nothing."
+        }
+      ],
+      "raw_output_file": "claude-code.txt",
+      "elapsed_seconds": 26.2,
+      "error": null,
+      "cost_usd": 0.1310222,
+      "num_turns": 3
+    }
+  }
+}

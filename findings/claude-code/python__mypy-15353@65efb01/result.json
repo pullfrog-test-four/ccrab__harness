@@ -1,0 +1,58 @@
+{
+  "instance_id": "python__mypy-15353@65efb01",
+  "tools": {
+    "claude-code": {
+      "success": true,
+      "num_findings": 7,
+      "findings": [
+        {
+          "file": "mypy/suggestions.py",
+          "line": 477,
+          "type": "bug",
+          "description": "Every `__new__` is now marked static, so `is_method = bool(node.info) and not node.is_static` is False for it. `get_args` then no longer skips the `cls` argument and indexes callsite arg lists off by one. Reproduced: a module with `class A: def __new__(cls, x): ...` and a call `A(1)`, then `dmypy suggest m.A.__new__`, crashes the daemon with `IndexError: list index out of range` at suggestions.py:350 (`call.arg_types[i - is_method]`). Before the change it printed `(int) -> m.A`. The pyannotate JSON path (line ~704, which drops class names for static methods) is also affected."
+        },
+        {
+          "file": "mypy/semanal.py",
+          "line": 5154,
+          "type": "bug",
+          "description": "`visit_member_expr` resolves `cls.X` / `self.X` (X a nested class, alias or module) only when `not func_def.is_static`. `__new__` is now static, so this lookup no longer works for `cls` inside `__new__`. Reproduced: `class A: import typing as tt; def __new__(cls): y = cls.tt.List; reveal_type(y)` used to reveal the `list` overload and now reveals `Any`. The check needs the same `or func_def.name == \"__new__\"` exception used elsewhere in this diff."
+        },
+        {
+          "file": "mypy/semanal.py",
+          "line": 873,
+          "type": "warning",
+          "description": "`skip_self = self.is_class_scope() and not defn.is_static` is now False for `__new__`, so the TypeGuard positional-argument check counts `cls` as a positional argument. This is inconsistent with how the first argument is treated elsewhere in this diff."
+        },
+        {
+          "file": "mypy/types.py",
+          "line": 1818,
+          "type": "warning",
+          "description": "`def_extras['first_arg']` is only filled when `not definition.is_static`, so it is now None for every `__new__`. After deserialization, when only `def_extras` is available, `pretty_callable` leaves the `cls` argument out of `__new__` signatures, and `maybe_note_about_special_args` never fires for a misnamed first argument of `__new__`."
+        },
+        {
+          "file": "mypy/messages.py",
+          "line": 2731,
+          "type": "info",
+          "description": "`pretty_class_or_static_decorator` now returns `@staticmethod` for every implicit `__new__`, so signature notes for `__new__` (e.g. protocol or override notes) will show a `@staticmethod` line the user never wrote."
+        },
+        {
+          "file": "mypy/typeops.py",
+          "line": 713,
+          "type": "suggestion",
+          "description": "`callable_type` is a helper that computes a type, but it now mutates its input node (`fdef.is_static = True`). This side effect is surprising, overlaps with the flag already set in semanal, and depends on call order. It is better to set the flag only in the semantic analyzer (and in plugin/treetransform node creation if needed) and keep `callable_type` side-effect free. Also, once `__new__` is always static, `not fdef.is_static or fdef.name == \"__new__\"` could simply be written as a named helper (e.g. `has_implicit_first_arg`) and used everywhere, instead of repeating the special case in checker.py, semanal.py and typeops.py."
+        },
+        {
+          "file": "mypyc/irbuild/prepare.py",
+          "line": 171,
+          "type": "info",
+          "description": "mypyc now gives `__new__` the kind `FUNC_STATICMETHOD` instead of `FUNC_NORMAL`. That changes the signature binding and wrapper generation: non-extension classes now wrap it in `staticmethod(...)`, and native classes get `METH_STATIC` in the method table. This is probably fine but it is an untested behaviour change for compiled classes that define `__new__`."
+        }
+      ],
+      "raw_output_file": "claude-code.txt",
+      "elapsed_seconds": 153.0,
+      "error": null,
+      "cost_usd": 0.5047438000000001,
+      "num_turns": 22
+    }
+  }
+}

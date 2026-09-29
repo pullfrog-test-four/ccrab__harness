@@ -1,0 +1,70 @@
+{
+  "instance_id": "scrapy__scrapy-2456@c7bb2fa",
+  "tools": {
+    "claude-code": {
+      "success": true,
+      "num_findings": 9,
+      "findings": [
+        {
+          "file": "scrapy/exporters.py",
+          "line": 39,
+          "type": "bug",
+          "description": "BaseItemExporter pops 'indent' with a default of None, but the docs (exporters.rst) say the default is indent=0. Anyone using JsonItemExporter directly without an indent now gets `[{...},{...}]` on a single line instead of the old `[\\n{...},\\n{...}\\n]`. That silently changes existing output. Only feed exports keep the old format, because FEED_EXPORT_INDENT defaults to 0. The default should be 0 to match the docs and keep backward compatibility."
+        },
+        {
+          "file": "scrapy/extensions/feedexport.py",
+          "line": 194,
+          "type": "bug",
+          "description": "`indent=self.indent` is now always passed to every exporter class. A user exporter registered in FEED_EXPORTERS whose __init__ doesn't accept an `indent` keyword (and doesn't forward **kwargs to _configure) will now raise TypeError, even though the user never set FEED_EXPORT_INDENT. Consider passing indent only when it's set, or handling exporters that don't accept it."
+        },
+        {
+          "file": "scrapy/exporters.py",
+          "line": 176,
+          "type": "warning",
+          "description": "With indent > 0, a field whose value is an empty dict or empty list is written as `<foo>\\n      </foo>` instead of `<foo></foo>`, because the newline and closing indent are added whatever the container holds. Pretty-printing also puts whitespace text nodes into element content, which changes the XML data for anyone who reads it with whitespace preserved."
+        },
+        {
+          "file": "scrapy/settings/default_settings.py",
+          "line": 164,
+          "type": "warning",
+          "description": "FEED_EXPORT_INDENT = 0 changes the default XML feed output: newlines now appear after <items> and after each <item>. Existing users who compare or parse the exact output will see this change, and it isn't mentioned as backward-incompatible."
+        },
+        {
+          "file": "docs/topics/feed-exports.rst",
+          "line": 278,
+          "type": "suggestion",
+          "description": "The docs contradict themselves. They say a 'non-negative integer' enables pretty-printing, then say 0 only puts each item on a new line. It should say 'positive integer'. The sentence about None is also missing its final period."
+        },
+        {
+          "file": "docs/topics/exporters.rst",
+          "line": 225,
+          "type": "suggestion",
+          "description": "Typos: \"it's\" should be \"its\" and \"indentated\" should be \"indented\". The documented default (0) also doesn't match the code (None)."
+        },
+        {
+          "file": "scrapy/exporters.py",
+          "line": 102,
+          "type": "suggestion",
+          "description": "Typo in the comment: 'behaviour or' should be 'behaviour of'."
+        },
+        {
+          "file": "tests/test_feedexport.py",
+          "line": 612,
+          "type": "suggestion",
+          "description": "A debug `print(row['format'], row['indent'])` was left in the test loop. Remove it, or use the case as the assertion message instead."
+        },
+        {
+          "file": "scrapy/extensions/feedexport.py",
+          "line": 177,
+          "type": "suggestion",
+          "description": "You can't set FEED_EXPORT_INDENT to None from the command line (`-s FEED_EXPORT_INDENT=None`): the value arrives as the string 'None', and getint raises ValueError. The compact mode can only be selected through Python settings."
+        }
+      ],
+      "raw_output_file": "claude-code.txt",
+      "elapsed_seconds": 36.6,
+      "error": null,
+      "cost_usd": 0.1439992,
+      "num_turns": 3
+    }
+  }
+}
