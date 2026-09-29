@@ -1,0 +1,42 @@
+{
+  "instance_id": "conan-io__conan-16942@e62c6eb",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 2,
+      "num_inline": 1,
+      "findings": [
+        {
+          "file": "conans/client/rest/remote_credentials.py",
+          "line": 57,
+          "start_line": null,
+          "end_line": null,
+          "description": "If the plugin returns only one value, it is silently thrown away. For example, a plugin that knows the user and returns `(\"admin\", None)` so the password comes from env or the prompt ends up with `user=None` in the later steps. Consider passing `plugin_user` on as `user` when only the password is missing, or document that the plugin must return both values or neither."
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> ℹ️ No critical issues — a few rough edges in the plugin contract, plus nits.\n\n**Reviewed changes**\n\nThis review covers the first version of the `auth.py` credentials plugin and its migration and tests.\n\n- **New `auth.py` plugin**: `RemoteCredentials.auth()` now asks `extensions/plugins/auth.py` first, before `credentials.json`, env vars and the interactive prompt. It uses the plugin's result only when both user and password are truthy.\n- **Plugin file is required**: `_load_auth_plugin()` raises if the file is missing. This matches the `profile.py` and `compatibility.py` plugins.\n- **Migration**: `migrate_auth_plugin()` writes a default no-op plugin through `update_file`, and it is wired into `ClientMigrator._apply_migrations`.\n- **Tests**: new integration tests cover a plugin that raises, a missing plugin file, direct credentials (good and bad password), and falling back to stdin.\n\n\n\n### ℹ️ The plugin's `remote` argument can be a pattern, and it never includes the URL\n\nThis PR defines a new public plugin signature, `auth_plugin(remote, user=None, password=None)`, but the value of `remote` depends on the caller. `conan remote login` passes the raw CLI pattern (`args.remote` at `conan/cli/commands/remote.py:199`), so `conan remote login \"*\"` calls the plugin with `remote=\"*\"`. `ConanApiAuthManager._retry_with_new_token` passes `remote.name`. Neither caller passes the remote URL. A keyring or libsecret integration (the use case in the PR description) would normally look credentials up by URL, the way `git` credential helpers do. This is harder to change once users have written plugins against it.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Auth plugin receives an inconsistent `remote` value and no URL\n\n## Affected sites\n- conan/cli/commands/remote.py:198-199 — `creds.auth(args.remote, ...)` passes the fnmatch pattern, not a resolved remote\n- conans/client/rest/auth_manager.py:73-74 — `creds.auth(remote.name)` passes a name only\n- conans/client/rest/remote_credentials.py:52 — `auth_plugin(remote, user=user, password=password)`\n\n## Required outcome\n- The plugin gets a well-defined value it can key credentials on (ideally the name and the URL), and gets the same kind of value from every caller.\n\n## Open questions for the human\n- Should the plugin receive the `Remote` object (name + URL) rather than a string? If so, `remote login` would need to call the plugin once per matched remote instead of once per pattern.\n- Is it intended that the plugin takes precedence over `credentials.json` and env vars? No test covers that precedence yet.\n````\n\n</details>\n\n### ℹ️ The user-mismatch error in `remote login` does not mention the plugin\n\nIf the plugin returns a user different from the one given on the command line, `remote login` fails with ``User 'x' doesn't match user 'y' in credentials.json or environment variables`` (`conan/cli/commands/remote.py:201-202`). That message sends users to the wrong place. It should also name the `auth.py` plugin.\n\n### ℹ️ Nitpicks\n\n- `conans/client/rest/remote_credentials.py:54`: `f\"Error while processing 'auth.py' plugin\"` has no placeholders, so the `f` prefix can go.\n- `conans/client/rest/remote_credentials.py:7-9`: the new imports are separated by blank lines and are out of order relative to the existing `conan.*`/`conans.*` imports.\n- `conans/client/rest/remote_credentials.py:104`: `migrate_auth_plugin` needs two blank lines before it, per PEP 8.\n- `test/integration/configuration/test_auth_plugin.py:13,34,49`: the test names `test_error_profile_plugin`, `test_profile_plugin_direct_credentials` and `test_profile_plugin_fallback` were copied from the profile plugin tests. They should say `auth_plugin`."
+        }
+      ],
+      "elapsed_seconds": 136.139,
+      "run_seconds": 157.871,
+      "cost_usd": 0.5829953999999999,
+      "input_tokens": 660853,
+      "output_tokens": 9298,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36642272603",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__conan-io__conan-16942/pull/1"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "instance_id": "scrapy__scrapy-2456@c7bb2fa",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 5,
+      "num_inline": 4,
+      "findings": [
+        {
+          "file": "scrapy/exporters.py",
+          "line": 39,
+          "start_line": null,
+          "end_line": null,
+          "description": "The docs (`exporters.rst`: `indent=0`, \"Defaults to ``0``\") say the default is `0`, but here it is `None`. So `JsonItemExporter(f)` used directly, for example in an item pipeline, now writes `[{...},{...}]` instead of the previous `[\\n{...},\\n{...}\\n]`. That silently changes output for anyone not going through feed exports.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `indent` default mismatch between code and docs\n\n## Affected sites\n- scrapy/exporters.py:39 — `options.pop('indent', None)`\n- docs/topics/exporters.rst:143 — signature documents `indent=0`\n- docs/topics/exporters.rst:221 — \"Defaults to ``0``\"\n\n## Required outcome\n- The code default and the documented default agree.\n- The change to direct-construction output is deliberate and documented.\n\n## Open questions for the human\n- No single default keeps both old behaviors. The old JSON output matches `indent=0`, and the old XML output matches `indent=None`. Options: (a) keep `None` and fix the docs, noting the JSON output change in the release notes; (b) default to `0`, which keeps the old JSON output but adds newlines to direct XML output; (c) use a per-exporter default.\n````\n\n</details>"
+        },
+        {
+          "file": "docs/topics/feed-exports.rst",
+          "line": 278,
+          "start_line": null,
+          "end_line": null,
+          "description": "`0` is a non-negative integer, but the next sentence says `0` does not pretty-print. This should say \"positive\".\n\n```suggestion\nis a positive integer, then array elements and object members will be pretty-printed\n```"
+        },
+        {
+          "file": "docs/topics/exporters.rst",
+          "line": 226,
+          "start_line": 225,
+          "end_line": 226,
+          "description": "Typos: \"it's\" should be \"its\", and \"indentated\" should be \"indented\".\n\n```suggestion\n      * ``indent<=0`` each item on its own line, no indentation\n      * ``indent>0`` each item on its own line, indented with the provided numeric value\n```"
+        },
+        {
+          "file": "tests/test_feedexport.py",
+          "line": 613,
+          "start_line": null,
+          "end_line": null,
+          "description": "Leftover debug `print`. Remove it, or pass `msg=` to `assertEqual` if you want the failing case to show up in the assertion message."
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> [!IMPORTANT]\n> The `indent` default in code (`None`) doesn't match the documented default (`0`). As a result, a `JsonItemExporter` built directly, outside feed exports, now writes different output than before.\n\n**Reviewed changes**\n\nI reviewed the whole PR: a new `indent` option for item exporters and a new `FEED_EXPORT_INDENT` setting that pretty-prints JSON and XML feeds.\n\n- **`BaseItemExporter.indent`**: new constructor option, popped in `_configure` with a default of `None`.\n- **`JsonItemExporter`**: `None` gives compact output, `<=0` puts one item per line, and `>0` passes the indent through to `ScrapyJSONEncoder`.\n- **`XmlItemExporter`**: new `_beautify_newline`/`_beautify_indent` helpers and a depth-aware `_export_xml_field` for nested dicts and lists.\n- **`FEED_EXPORT_INDENT`**: new setting, default `0`. `FeedExporter` reads it and passes `indent=` to every exporter. With the default, XML feeds now get a newline between items.\n- **Tests and docs**: existing feed tests now set `FEED_EXPORT_INDENT: None` to keep their old expectations. A new `test_export_indentation` checks exact bytes for json/xml at several indent levels. Both doc pages are updated.\n\nTests were not run locally: this scrapy snapshot can't be imported on the runner's Python (`inspect.getargspec` was removed in newer Python versions).\n\n\n\n### ℹ️ Nitpicks\n\n- With `indent>0`, JSON items are not indented under the enclosing `[`: each `{` starts at column 0. XML items are indented one level under the root. That matches the new test expectations, but the two formats behave differently, so mention it in the docs if it's intended.\n- `scrapy/exporters.py:102`: in the comment, \"behaviour or `JsonItemExporter.indent`\" should read \"behaviour of\"."
+        }
+      ],
+      "elapsed_seconds": 121.26,
+      "run_seconds": 139.705,
+      "cost_usd": 0.4708882,
+      "input_tokens": 421293,
+      "output_tokens": 8358,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36642405831",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__scrapy__scrapy-2456/pull/1"
+    }
+  }
+}

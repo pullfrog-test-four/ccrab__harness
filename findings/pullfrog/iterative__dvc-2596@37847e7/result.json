@@ -1,0 +1,49 @@
+{
+  "instance_id": "iterative__dvc-2596@37847e7",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 3,
+      "num_inline": 2,
+      "findings": [
+        {
+          "file": "scripts/completion/dvc.bash",
+          "line": 100,
+          "start_line": null,
+          "end_line": null,
+          "description": "`COMP_WORDS[1]` isn't normalized here, so `dvc import-url <url> <TAB>` looks up `_dvc_import-url_<url>`. `${!options_list}` then prints `invalid variable name` into the user's terminal. Normalizing only the hyphen isn't enough: `COMP_WORDS[2]` is usually a URL or path (`http://…`, `data.csv`), and those characters are invalid in a variable name too. Replacing every non-identifier character fixes both words, and an unmatched name just expands to empty:\n\n```suggestion\n      local options_list=\"_dvc_${COMP_WORDS[1]//[^[:alnum:]_]/_}_${COMP_WORDS[2]//[^[:alnum:]_]/_}\"\n```"
+        },
+        {
+          "file": "scripts/completion/dvc.bash",
+          "line": 76,
+          "start_line": 74,
+          "end_line": 76,
+          "description": "Nit: this runs two subshells and `sed` on every TAB. It also leaves `$1` unquoted, so a word like `*` gets glob-expanded. And since this script is sourced, it adds an unprefixed `replace_hyphen` function to the user's shell. Bash's built-in parameter expansion `${COMP_WORDS[1]//-/_}` does the same job inline, so this helper could be dropped (see the suggestion on line 100 and apply the same to line 92)."
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> [!IMPORTANT]\n> Completing the argument after `dvc import-url <url>` or `dvc get-url <url>` still prints a bash `invalid variable name` error to the terminal. That's the same failure this PR fixes one word earlier.\n\n**Reviewed changes**\n\nI reviewed the one commit that updates the bash completion script so hyphenated commands resolve to their option variables.\n\n- **Hyphen normalization**: adds a `replace_hyphen` helper so that `dvc import-url <TAB>` and `dvc get-url <TAB>` look up `_dvc_import_url` / `_dvc_get_url`.\n- **Flag guards**: at the second and third word positions, completion now returns early when the previous word is a flag (e.g. `dvc add -R <TAB>`). Before, this produced lookups like `_dvc_add_-R`, which are invalid variable names.\n\nI checked this by sourcing the script in bash and calling `_dvc` with a synthetic `COMP_WORDS`. `dvc import-url <TAB>` now offers `-f --file` as intended. `dvc import-url http://x <TAB>` fails with `_dvc_import-url_http://x: invalid variable name`."
+        }
+      ],
+      "elapsed_seconds": 103.833,
+      "run_seconds": 120.237,
+      "cost_usd": 0.365769,
+      "input_tokens": 381395,
+      "output_tokens": 6168,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36642313361",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__iterative__dvc-2596/pull/1"
+    }
+  }
+}

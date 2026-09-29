@@ -1,0 +1,70 @@
+{
+  "instance_id": "certbot__certbot-9076@01f570d",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 6,
+      "num_inline": 5,
+      "findings": [
+        {
+          "file": "tools/finish_release.py",
+          "line": 90,
+          "start_line": null,
+          "end_line": null,
+          "description": "`command` is already a list, so `command.split()` raises `AttributeError: 'list' object has no attribute 'split'`. The Windows publish step can never run.\n\n```suggestion\n    subprocess.run(command, check=True)\n```"
+        },
+        {
+          "file": "tools/finish_release.py",
+          "line": 180,
+          "start_line": null,
+          "end_line": null,
+          "description": "`version` is no longer defined anywhere, since it used to come from `download_azure_artifacts`. Snaps are published by default, so a plain run raises `NameError` before anything is published. The script still needs a way to get the release version for `promote_snaps`, for example a required `--version` arg or a lightweight lookup of the latest Azure build tag."
+        },
+        {
+          "file": "tools/finish_release.py",
+          "line": 66,
+          "start_line": null,
+          "end_line": null,
+          "description": "`--css` is required even with `--snaps-only`, where it's never used. It would make more sense to require it only when `publish_windows` is true, e.g. by checking after parsing and calling `parser.error(...)`."
+        },
+        {
+          "file": "tools/finish_release.py",
+          "line": 17,
+          "start_line": null,
+          "end_line": null,
+          "description": "This usage example fails right away because `--css` is required. Please update it to show the flag, and add setup notes for SSH access to the signing server in the `Setup:` section.\n\n```suggestion\npython tools/finish_release.py --css <code signing server hostname>\n```"
+        },
+        {
+          "file": "tools/finish_release.py",
+          "line": 87,
+          "start_line": null,
+          "end_line": null,
+          "description": "Hardcoding `getpass.getuser()` into the destination overrides any `User` set for this host in `~/.ssh/config`. That breaks for anyone whose local username differs from their CSS account. Passing just `host` lets `ssh` use its normal user resolution, and it already defaults to the local user.\n\n```suggestion\n    command = [\"ssh\", css, \"python3\", \"sign.py\", \"~/.ssh/githubpat.txt\"]\n```"
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> [!CAUTION]\n> Neither release path in `tools/finish_release.py` works as written. The Windows path crashes on `command.split()`, and the snaps path (the default flow) crashes on an undefined `version`.\n\n**Reviewed changes**\n\nReviewed the initial commit, which moves Windows installer signing and publishing to a remote code signing server.\n\n- **Remote signing via SSH** — `publish_windows` replaces the Azure artifact download and PyGithub release creation. It SSHes to the `--css` host and runs `sign.py` there.\n- **CLI change** — the `githubpat` positional arg is gone. A required `--css` hostname arg replaces it.\n- **Dependency cleanup** — `azure-devops` and `PyGithub` are dropped from `dev_extras` in `certbot/setup.py`.\n- **Docs** — adds a CHANGELOG entry and an AUTHORS entry.\n\n\n\n### ⚠️ The signing script is not part of this PR\n\nThe Windows release logic now lives entirely in `sign.py` on the signing host. That script isn't in the repo, so it can't be reviewed, versioned or reproduced. It now owns downloading the Azure artifacts, signing, creating the GitHub release and handling `release_notes.md`. The PR description mentions generating the key, getting the certificate and documenting the release steps, but none of that is here.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Remote `sign.py` is unversioned\n\n## Affected sites\n- tools/finish_release.py:87 — invokes `python3 sign.py ~/.ssh/githubpat.txt` on the remote host\n- tools/finish_release.py:19-24 — \"Testing\" docstring still describes the GitHub draft release behavior, which this script no longer controls\n\n## Required outcome\n- The signing and upload logic run on the CSS is checked in (or referenced from a versioned location), so reviewers can audit how the Authenticode key is used and how releases are created.\n- Release docs describe the new CSS setup: SSH access, where the PAT lives on the server, and how to run the script.\n\n## Open questions for the human\n- Should `sign.py` live in `tools/` here, or in a separate private repo? If private, where are the operator instructions documented?\n````\n\n</details>\n\n### ℹ️ Nitpicks\n\n- `tempfile`, `ZipFile` and `requests` are now unused in `tools/finish_release.py`.\n- `tools/requirements.txt` still pins `azure-devops` and `pygithub`. Regenerate it if nothing else in `tools/` needs them.\n- The CHANGELOG line has a trailing space and no final period."
+        }
+      ],
+      "elapsed_seconds": 90.66,
+      "run_seconds": 111.609,
+      "cost_usd": 0.402519,
+      "input_tokens": 332893,
+      "output_tokens": 5444,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36642227355",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__certbot__certbot-9076/pull/1"
+    }
+  }
+}
