@@ -52,6 +52,29 @@ def setup_claude_in_container(session):
 
 
 rte.setup_claude_in_container = setup_claude_in_container
+real_invoke = rte.invoke_claude_in_container
+resolver_output: list[str] = []
+
+
+def invoke_with_usage(session, prompt, model):
+    """the paper's invocation plus `--output-format json`, which only changes what -p prints, so cost is recorded."""
+    real_run = session.run_command
+
+    def run(cmd, **kw):
+        if isinstance(cmd, list) and "--dangerously-skip-permissions" in cmd[-1]:
+            cmd = [*cmd[:-1], cmd[-1] + " --output-format json"]
+        return real_run(cmd, **kw)
+
+    session.run_command = run
+    try:
+        stdout, rc = real_invoke(session, prompt, model)
+    finally:
+        session.run_command = real_run
+    resolver_output.append(stdout)
+    return stdout, rc
+
+
+rte.invoke_claude_in_container = invoke_with_usage
 
 instance = rte.load_stage3_instance(Path("ccrab/results_pipeline_funnel/stage3_testgen_verified.jsonl"), args.instance)
 testgen = rte.load_testgen_results(Path(args.testgen_dir), args.instance)
@@ -68,4 +91,5 @@ result = rte.process_tool_instance(
     docker_image=rte.get_docker_image_name(args.instance),
     credentials_path=Path("/nonexistent"),
 )
+(Path(args.out) / args.instance.replace("/", "__") / "resolver.json").write_text("\n".join(resolver_output))
 print(f"{args.instance}: done (error={result.get('error')})")
