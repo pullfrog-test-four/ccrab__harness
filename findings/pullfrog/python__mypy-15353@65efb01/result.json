@@ -1,0 +1,42 @@
+{
+  "instance_id": "python__mypy-15353@65efb01",
+  "tools": {
+    "pullfrog": {
+      "success": true,
+      "num_findings": 2,
+      "num_inline": 1,
+      "findings": [
+        {
+          "file": "mypy/typeops.py",
+          "line": 714,
+          "start_line": 713,
+          "end_line": 714,
+          "description": "This changes the `FuncDef` from inside a helper that only builds a type, and it isn't needed. `prepare_method_signature` already sets `is_static` for every class-scope `__new__`, and the flag is serialized. I removed these two lines and the full `testcheck` suite still passed (6448 passed), and unannotated `__new__` still revealed the same types. As written, it also flags module-level or nested functions named `__new__` as static.\n\n```suggestion\n\n```"
+        },
+        {
+          "file": "(general)",
+          "type": "Review summary",
+          "description": "> [!IMPORTANT]\n> Making every `__new__` `is_static` breaks `dmypy suggest` on `__new__` methods. It now crashes where `main` returned a suggestion.\n\n**Reviewed changes**\n\nI reviewed the one commit that makes explicitly decorated `__new__` / `__init_subclass__` behave the same as the implicit forms. The issue's `@staticmethod def __new__(cls) -> Self` repro now type-checks cleanly. The new test fails on `main` and passes here, and the full `testcheck` suite passes.\n\n- **`__new__` is now always static**: `prepare_method_signature` sets `is_static = True` on every `__new__`. The `cls` handling in `semanal`, `checker` and `typeops` is special-cased by name.\n- **`checkmember` simplified**: instance member access now only checks `method.is_static` and no longer checks the `__new__` name.\n- **`checker` `isclass` simplified**: the check drops the `__init_subclass__` name test and relies on semanal setting `is_class` for it.\n- **New test `testSelfTypeNew_explicit`**: this is a decorated copy of `testSelfTypeNew`. Six fixtures also gain `classmethod` / `staticmethod` stubs.\n\n\n\n### ⚠️ `dmypy suggest` crashes on `__new__`\n\n`SuggestionEngine.get_suggestion` decides whether to skip the first argument with `is_method = bool(node.info) and not node.is_static`. Now that every `__new__` is static, `cls` is counted as a normal argument and indexing the call-site argument list runs past its end. I reproduced this: `dmypy suggest m.A.__new__` for `class A: def __new__(cls, x): ...` called as `A(1)` returns `(int) -> m.A` on `main`. On this branch the daemon crashes with `IndexError: list index out of range` at `mypy/suggestions.py:350`.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# dmypy suggest regression for `__new__`\n\n## Affected sites\n- mypy/suggestions.py:477 — `is_method = bool(node.info) and not node.is_static` is now False for every `__new__`, so `get_args` indexes `call.arg_types[i - is_method]` out of range (crash at mypy/suggestions.py:350).\n- mypy/suggestions.py:704 — `if node.is_class or node.is_static:` now also strips the class name from `__new__` in `--json` (pyannotate) output. Before this PR, `__new__` kept its `A.__new__` qualified name.\n\n## Required outcome\n- `dmypy suggest <mod>.<Class>.__new__` produces the same suggestion as on `main`, e.g. `(int) -> m.A`.\n- A regression test in `test-data/unit/fine-grained-suggest.test` that runs suggest on a `__new__` method.\n\n## Suggested approach\n- Use the same `(not node.is_static or node.name == \"__new__\")` idiom this PR applies elsewhere for `is_method`. Decide deliberately whether the pyannotate name-stripping at line 704 should change for `__new__`.\n````\n\n</details>\n\n### ℹ️ Nitpicks\n\n- The new test doesn't cover the issue's actual repro (`@staticmethod def __new__(cls) -> Self`) or an explicit `@classmethod __class_getitem__`, which the PR title mentions. Also, the `@classmethod __init_subclass__` half of the test already passes on `main`, so only the `__new__` half guards against this regression.\n- The `classmethod` / `staticmethod` stubs added to `__init_subclass__.pyi`, `__new__.pyi`, `dict.pyi`, `object_with_init_subclass.pyi`, `primitives.pyi` and `tuple.pyi` are not used by any test in this PR. The new test uses `classmethod.pyi`, which already had both. Either add tests that need them or drop the fixture changes."
+        }
+      ],
+      "elapsed_seconds": 462.998,
+      "run_seconds": 487.267,
+      "cost_usd": 1.1616638,
+      "input_tokens": 2067953,
+      "output_tokens": 19033,
+      "model": "anthropic/claude-opus-5-5",
+      "agent": "claude",
+      "runs": [
+        {
+          "type": "pr-created",
+          "status": "success",
+          "runId": "36642360545",
+          "effortArm": null,
+          "modelArm": null
+        }
+      ],
+      "other_authors": [],
+      "pr_url": "https://github.com/pullfrog-test-four/ccrab__python__mypy-15353/pull/1"
+    }
+  }
+}
