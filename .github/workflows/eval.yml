@@ -44,8 +44,16 @@ jobs:
           pip install --quiet packaging
           slug="${INSTANCE%@*}"
           image="$(echo "$slug" | tr '[:upper:]' '[:lower:]')"
-          docker pull --quiet "ghcr.io/c-crab-benchmark/${image}:latest"
-          docker tag "ghcr.io/c-crab-benchmark/${image}:latest" "reviewbench/${image}"
+          if docker pull --quiet "ghcr.io/c-crab-benchmark/${image}:latest"; then
+            docker tag "ghcr.io/c-crab-benchmark/${image}:latest" "reviewbench/${image}"
+          else
+            # two images were never published: build them with the paper's own builder
+            pipx install --quiet uv
+            (cd ccrab && uv sync --quiet && uv run python -m execution.build_swe_care --split test \
+              --instance "${slug%-*}__${INSTANCE#*@}" --max-workers 1 \
+              --pip-index-url https://pypi.org/simple --pip-trusted-host pypi.org)
+            docker image inspect "reviewbench/${image}" > /dev/null
+          fi
           unzip -q ccrab/raw_results_compressed/testgen_combined.zip "testgen_combined/${INSTANCE}/*" -d /tmp
           printf '%s' "$ANTHROPIC_API_KEY" > /tmp/anthropic_key
           echo "SLUG=$slug" >> "$GITHUB_ENV"
