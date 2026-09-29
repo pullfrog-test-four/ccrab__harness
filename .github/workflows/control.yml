@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 5
+      max-parallel: 1
       matrix:
         instance: ${{ fromJSON(inputs.instances) }}
     steps:
@@ -48,7 +48,8 @@ jobs:
           echo "SLUG=$slug" >> "$GITHUB_ENV"
       - name: Review
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # the same subscription the Pullfrog arm uses, under a name that cannot leak into a pullfrog.yml env
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CONTROL_CLAUDE_CODE_OAUTH_TOKEN }}
           INSTANCE: ${{ matrix.instance }}
         run: >
           python control.py --instance "$INSTANCE" --workdir work --model "${{ inputs.model }}"
